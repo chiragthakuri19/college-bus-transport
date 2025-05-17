@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.StringUtils;
 
 import javax.sql.DataSource;
@@ -20,35 +22,36 @@ public class DatabaseConfig {
     @Value("${DATABASE_URL:#{null}}")
     private String databaseUrl;
 
-    @Value("${spring.datasource.url:#{null}}")
-    private String fallbackUrl;
-
-    @Value("${spring.datasource.username:#{null}}")
-    private String fallbackUsername;
-
-    @Value("${spring.datasource.password:#{null}}")
-    private String fallbackPassword;
+    @Bean
+    @ConfigurationProperties(prefix = "spring.datasource")
+    public DataSourceProperties dataSourceProperties() {
+        return new DataSourceProperties();
+    }
 
     @Primary
     @Bean
-    public DataSource dataSource() throws URISyntaxException {
+    public DataSource dataSource(DataSourceProperties properties) {
         HikariConfig config = new HikariConfig();
         
         if (StringUtils.hasText(databaseUrl)) {
-            // Parse Render's DATABASE_URL
-            URI dbUri = new URI(databaseUrl);
-            String username = dbUri.getUserInfo().split(":")[0];
-            String password = dbUri.getUserInfo().split(":")[1];
-            String dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ':' + dbUri.getPort() + dbUri.getPath() + "?sslmode=require";
-            
-            config.setJdbcUrl(dbUrl);
-            config.setUsername(username);
-            config.setPassword(password);
+            try {
+                // Parse Render's DATABASE_URL
+                URI dbUri = new URI(databaseUrl);
+                String username = dbUri.getUserInfo().split(":")[0];
+                String password = dbUri.getUserInfo().split(":")[1];
+                String dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ':' + dbUri.getPort() + dbUri.getPath() + "?sslmode=require";
+                
+                config.setJdbcUrl(dbUrl);
+                config.setUsername(username);
+                config.setPassword(password);
+            } catch (URISyntaxException e) {
+                throw new RuntimeException("Failed to parse DATABASE_URL", e);
+            }
         } else {
-            // Use fallback configuration
-            config.setJdbcUrl(fallbackUrl);
-            config.setUsername(fallbackUsername);
-            config.setPassword(fallbackPassword);
+            // Use properties from application.properties
+            config.setJdbcUrl(properties.getUrl());
+            config.setUsername(properties.getUsername());
+            config.setPassword(properties.getPassword());
         }
 
         config.setDriverClassName("org.postgresql.Driver");
