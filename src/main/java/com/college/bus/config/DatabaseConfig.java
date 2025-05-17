@@ -1,80 +1,71 @@
 package com.college.bus.config;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.util.StringUtils;
 
 import javax.sql.DataSource;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Properties;
 
 @Configuration
-@EnableTransactionManagement
-@EnableJpaRepositories(
-    basePackages = "com.college.bus.repository",
-    entityManagerFactoryRef = "entityManagerFactory",
-    transactionManagerRef = "transactionManager"
-)
 @Profile("prod")
 public class DatabaseConfig {
 
-    @Value("${DATABASE_URL}")
+    @Value("${DATABASE_URL:#{null}}")
     private String databaseUrl;
+
+    @Value("${spring.datasource.url:#{null}}")
+    private String fallbackUrl;
+
+    @Value("${spring.datasource.username:#{null}}")
+    private String fallbackUsername;
+
+    @Value("${spring.datasource.password:#{null}}")
+    private String fallbackPassword;
 
     @Primary
     @Bean
     public DataSource dataSource() throws URISyntaxException {
-        URI dbUri = new URI(databaseUrl);
-
-        String username = dbUri.getUserInfo().split(":")[0];
-        String password = dbUri.getUserInfo().split(":")[1];
-        String dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ':' + dbUri.getPort() + dbUri.getPath();
-
-        return DataSourceBuilder.create()
-                .driverClassName("org.postgresql.Driver")
-                .url(dbUrl)
-                .username(username)
-                .password(password)
-                .build();
-    }
-
-    @Primary
-    @Bean(name = "entityManagerFactory")
-    public LocalContainerEntityManagerFactoryBean entityManagerFactory() throws URISyntaxException {
-        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-        vendorAdapter.setGenerateDdl(true);
-        vendorAdapter.setShowSql(false);
-
-        LocalContainerEntityManagerFactoryBean factory = new LocalContainerEntityManagerFactoryBean();
-        factory.setJpaVendorAdapter(vendorAdapter);
-        factory.setPackagesToScan("com.college.bus.model");
-        factory.setDataSource(dataSource());
+        HikariConfig config = new HikariConfig();
         
-        Properties jpaProperties = new Properties();
-        jpaProperties.put("hibernate.hbm2ddl.auto", "update");
-        jpaProperties.put("hibernate.jdbc.lob.non_contextual_creation", "true");
-        jpaProperties.put("hibernate.physical_naming_strategy", "org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl");
-        jpaProperties.put("hibernate.implicit_naming_strategy", "org.hibernate.boot.model.naming.ImplicitNamingStrategyJpaCompliantImpl");
-        factory.setJpaProperties(jpaProperties);
+        if (StringUtils.hasText(databaseUrl)) {
+            // Parse Render's DATABASE_URL
+            URI dbUri = new URI(databaseUrl);
+            String username = dbUri.getUserInfo().split(":")[0];
+            String password = dbUri.getUserInfo().split(":")[1];
+            String dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ':' + dbUri.getPort() + dbUri.getPath() + "?sslmode=require";
+            
+            config.setJdbcUrl(dbUrl);
+            config.setUsername(username);
+            config.setPassword(password);
+        } else {
+            // Use fallback configuration
+            config.setJdbcUrl(fallbackUrl);
+            config.setUsername(fallbackUsername);
+            config.setPassword(fallbackPassword);
+        }
 
-        return factory;
-    }
-
-    @Primary
-    @Bean(name = "transactionManager")
-    public PlatformTransactionManager transactionManager() throws URISyntaxException {
-        JpaTransactionManager txManager = new JpaTransactionManager();
-        txManager.setEntityManagerFactory(entityManagerFactory().getObject());
-        return txManager;
+        config.setDriverClassName("org.postgresql.Driver");
+        
+        // Connection pool settings
+        config.setMinimumIdle(1);
+        config.setMaximumPoolSize(3);
+        config.setIdleTimeout(300000);
+        config.setConnectionTimeout(20000);
+        config.setMaxLifetime(1200000);
+        
+        // PostgreSQL specific settings
+        config.addDataSourceProperty("cachePrepStmts", "true");
+        config.addDataSourceProperty("prepStmtCacheSize", "250");
+        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        config.addDataSourceProperty("useServerPrepStmts", "true");
+        
+        return new HikariDataSource(config);
     }
 } 
