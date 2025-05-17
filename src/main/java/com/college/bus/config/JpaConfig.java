@@ -32,6 +32,9 @@ public class JpaConfig {
         em.setPackagesToScan("com.college.bus.model");
         
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        vendorAdapter.setShowSql(true);
+        vendorAdapter.setGenerateDdl(true);
+        vendorAdapter.setDatabasePlatform("org.hibernate.dialect.PostgreSQLDialect");
         em.setJpaVendorAdapter(vendorAdapter);
         
         Map<String, Object> properties = new HashMap<>();
@@ -40,6 +43,7 @@ public class JpaConfig {
         properties.put("hibernate.show_sql", "true");
         properties.put("hibernate.format_sql", "true");
         properties.put("hibernate.jdbc.lob.non_contextual_creation", "true");
+        properties.put("hibernate.temp.use_jdbc_metadata_defaults", "false");
         
         if (env.matchesProfiles("prod")) {
             properties.put("hibernate.connection.provider_disables_autocommit", "true");
@@ -55,9 +59,9 @@ public class JpaConfig {
 
     @Primary
     @Bean
-    public PlatformTransactionManager transactionManager() {
+    public PlatformTransactionManager transactionManager(LocalContainerEntityManagerFactoryBean entityManagerFactory) {
         JpaTransactionManager transactionManager = new JpaTransactionManager();
-        transactionManager.setEntityManagerFactory(entityManagerFactory().getObject());
+        transactionManager.setEntityManagerFactory(entityManagerFactory.getObject());
         return transactionManager;
     }
 }

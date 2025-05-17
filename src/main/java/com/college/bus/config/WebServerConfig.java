@@ -19,6 +19,9 @@ public class WebServerConfig {
     @Value("${server.tomcat.connection-timeout:20000}")
     private int connectionTimeout;
 
+    @Value("${cors.allowed-origins:*}")
+    private String allowedOrigins;
+
     @Bean
     public ServletWebServerFactory servletContainer() {
         TomcatServletWebServerFactory tomcat = new TomcatServletWebServerFactory();
@@ -49,12 +52,12 @@ public class WebServerConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**")
-                    .allowedOrigins("*")
-                    .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "TRACE", "CONNECT")
-                    .allowedHeaders("*")
+                registry.addMapping("/api/**")
+                    .allowedOrigins(allowedOrigins.split(","))
+                    .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                    .allowedHeaders("Authorization", "Content-Type", "X-Requested-With")
                     .exposedHeaders("Authorization")
-                    .allowCredentials(true)
+                    .allowCredentials("*".equals(allowedOrigins) ? false : true)
                     .maxAge(3600);
             }
         };
