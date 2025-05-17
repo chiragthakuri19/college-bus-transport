@@ -6,18 +6,21 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.Profile;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.StringUtils;
+import org.springframework.core.env.Environment;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.sql.DataSource;
 import java.net.URI;
 import java.net.URISyntaxException;
 
 @Configuration
-@Profile("prod")
 public class DatabaseConfig {
+
+    @Autowired
+    private Environment environment;
 
     @Value("${DATABASE_URL:#{null}}")
     private String databaseUrl;
@@ -33,7 +36,10 @@ public class DatabaseConfig {
     public DataSource dataSource(DataSourceProperties properties) {
         HikariConfig config = new HikariConfig();
         
-        if (StringUtils.hasText(databaseUrl)) {
+        // Check if we're in production environment
+        boolean isProduction = environment.matchesProfiles("prod");
+        
+        if (isProduction && StringUtils.hasText(databaseUrl)) {
             try {
                 // Parse Render's DATABASE_URL
                 URI dbUri = new URI(databaseUrl);
@@ -48,7 +54,7 @@ public class DatabaseConfig {
                 throw new RuntimeException("Failed to parse DATABASE_URL", e);
             }
         } else {
-            // Use properties from application.properties
+            // Use properties from application.properties for development
             config.setJdbcUrl(properties.getUrl());
             config.setUsername(properties.getUsername());
             config.setPassword(properties.getPassword());
@@ -57,8 +63,16 @@ public class DatabaseConfig {
         config.setDriverClassName("org.postgresql.Driver");
         
         // Connection pool settings
-        config.setMinimumIdle(1);
-        config.setMaximumPoolSize(3);
+        if (isProduction) {
+            // Production pool settings
+            config.setMinimumIdle(1);
+            config.setMaximumPoolSize(3);
+        } else {
+            // Development pool settings
+            config.setMinimumIdle(1);
+            config.setMaximumPoolSize(5);
+        }
+        
         config.setIdleTimeout(300000);
         config.setConnectionTimeout(20000);
         config.setMaxLifetime(1200000);
