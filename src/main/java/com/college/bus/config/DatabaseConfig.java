@@ -20,7 +20,11 @@ import java.util.Properties;
 
 @Configuration
 @EnableTransactionManagement
-@EnableJpaRepositories(basePackages = "com.college.bus.repository")
+@EnableJpaRepositories(
+    basePackages = "com.college.bus.repository",
+    entityManagerFactoryRef = "entityManagerFactory",
+    transactionManagerRef = "transactionManager"
+)
 @Profile("prod")
 public class DatabaseConfig {
 
@@ -59,13 +63,15 @@ public class DatabaseConfig {
         Properties jpaProperties = new Properties();
         jpaProperties.put("hibernate.hbm2ddl.auto", "update");
         jpaProperties.put("hibernate.jdbc.lob.non_contextual_creation", "true");
+        jpaProperties.put("hibernate.physical_naming_strategy", "org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl");
+        jpaProperties.put("hibernate.implicit_naming_strategy", "org.hibernate.boot.model.naming.ImplicitNamingStrategyJpaCompliantImpl");
         factory.setJpaProperties(jpaProperties);
 
         return factory;
     }
 
     @Primary
-    @Bean
+    @Bean(name = "transactionManager")
     public PlatformTransactionManager transactionManager() throws URISyntaxException {
         JpaTransactionManager txManager = new JpaTransactionManager();
         txManager.setEntityManagerFactory(entityManagerFactory().getObject());
