@@ -2,6 +2,7 @@ services:
   - type: web
     name: college-bus-transport
     env: java
+    plan: free
     buildCommand: ./mvnw clean package -DskipTests
     startCommand: java -jar target/*.jar
     envVars:
@@ -9,5 +10,5 @@ services:
         value: 8080
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: JDBC_DATABASE_URL
-        value: jdbc:postgresql://college_bus_transport_user:vyF15b97LDlzkLh1KeML8oA6DEYS788Y@dpg-d0k229juibrs7394prfg-a/college_bus_transport 
+      - key: DATABASE_URL
+        value: postgres://college_bus_transport_user:vyF15b97LDlzkLh1KeML8oA6DEYS788Y@dpg-d0k229juibrs7394prfg-a/college_bus_transport 
