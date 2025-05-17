@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - College Bus Transport System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
+            <a href="/admin/dashboard.html" class="navbar-brand">Bus Transport Admin</a>
+            <ul class="nav-links" style="margin: 0; display: flex; align-items: center;">
+                <li><a href="#" onclick="showSection('routes')">Bus Routes</a></li>
+                <li><a href="#" onclick="showSection('students')">Students</a></li>
+                <li><a href="#" onclick="showSection('notifications')">Notifications</a></li>
+                <li><a href="#" onclick="logout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="error-message" class="notification notification-error" style="display: none;"></div>
+        <div id="success-message" class="notification notification-success" style="display: none;"></div>
+
+        <!-- Bus Routes Section -->
+        <section id="routes-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2>Bus Routes</h2>
+                <button class="btn btn-primary" onclick="showAddRouteForm()">Add New Route</button>
+            </div>
+
+            <div id="add-route-form" class="card" style="display: none;">
+                <h3>Add New Route</h3>
+                <form id="route-form" onsubmit="handleAddRoute(event)">
+                    <div class="form-group">
+                        <label class="form-label">Route Name</label>
+                        <input type="text" name="routeName" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Start Location</label>
+                        <input type="text" name="startLocation" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">End Location</label>
+                        <input type="text" name="endLocation" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Departure Time</label>
+                        <input type="time" name="departureTime" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Estimated Arrival Time</label>
+                        <input type="time" name="estimatedArrivalTime" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Bus Number</label>
+                        <input type="text" name="busNumber" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Capacity</label>
+                        <input type="number" name="capacity" class="form-input" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Route</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideAddRouteForm()">Cancel</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <table class="table" id="routes-table">
+                    <thead>
+                        <tr>
+                            <th>Route Name</th>
+                            <th>Start Location</th>
+                            <th>End Location</th>
+                            <th>Departure</th>
+                            <th>Arrival</th>
+                            <th>Bus Number</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Students Section -->
+        <section id="students-section" style="display: none;">
+            <h2>Students</h2>
+            <div class="card">
+                <table class="table" id="students-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Transport Fee</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Notifications Section -->
+        <section id="notifications-section" style="display: none;">
+            <h2>Send Notification</h2>
+            <div class="card">
+                <form id="notification-form" onsubmit="handleSendNotification(event)">
+                    <div class="form-group">
+                        <label class="form-label">Title</label>
+                        <input type="text" name="title" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message</label>
+                        <textarea name="message" class="form-input" rows="4" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send to All Students</button>
+                </form>
+            </div>
+        </section>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script>
+        // Check authentication
+        if (!isAuthenticated()) {
+            window.location.href = '/login.html';
+        }
+
+        const user = getCurrentUser();
+        if (user.role !== 'ADMIN') {
+            window.location.href = '/student/dashboard.html';
+        }
+
+        // Section visibility
+        function showSection(sectionName) {
+            document.getElementById('routes-section').style.display = 'none';
+            document.getElementById('students-section').style.display = 'none';
+            document.getElementById('notifications-section').style.display = 'none';
+            document.getElementById(`${sectionName}-section`).style.display = 'block';
+        }
+
+        // Routes management
+        function showAddRouteForm() {
+            document.getElementById('add-route-form').style.display = 'block';
+        }
+
+        function hideAddRouteForm() {
+            document.getElementById('add-route-form').style.display = 'none';
+            document.getElementById('route-form').reset();
+        }
+
+        async function loadRoutes() {
+            try {
+                const response = await fetch('/api/admin/routes', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                const routes = await response.json();
+                const tbody = document.querySelector('#routes-table tbody');
+                tbody.innerHTML = routes.map(route => `
+                    <tr>
+                        <td>${route.routeName}</td>
+                        <td>${route.startLocation}</td>
+                        <td>${route.endLocation}</td>
+                        <td>${route.departureTime}</td>
+                        <td>${route.estimatedArrivalTime}</td>
+                        <td>${route.busNumber}</td>
+                        <td>${route.active ? 'Active' : 'Inactive'}</td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="editRoute(${route.id})">Edit</button>
+                            <button class="btn btn-danger" onclick="deactivateRoute(${route.id})">Deactivate</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                showError('Failed to load routes');
+            }
+        }
+
+        // Students management
+        async function loadStudents() {
+            try {
+                const response = await fetch('/api/admin/students', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                const students = await response.json();
+                const tbody = document.querySelector('#students-table tbody');
+                tbody.innerHTML = students.map(student => `
+                    <tr>
+                        <td>${student.fullName}</td>
+                        <td>${student.email}</td>
+                        <td>${student.transportFeePaid ? 'Paid' : 'Not Paid'}</td>
+                        <td>
+                            <button class="btn btn-secondary" 
+                                onclick="updateTransportFee(${student.id}, ${!student.transportFeePaid})">
+                                ${student.transportFeePaid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                showError('Failed to load students');
+            }
+        }
+
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            loadRoutes();
+            loadStudents();
+        });
+
+        // Form handlers
+        async function handleAddRoute(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const routeData = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch('/api/admin/routes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(routeData)
+                });
+                
+                if (response.ok) {
+                    showSuccess('Route added successfully');
+                    hideAddRouteForm();
+                    loadRoutes();
+                } else {
+                    throw new Error('Failed to add route');
+                }
+            } catch (error) {
+                showError('Failed to add route');
+            }
+        }
+
+        async function handleSendNotification(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const notificationData = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch('/api/admin/notifications', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(notificationData)
+                });
+                
+                if (response.ok) {
+                    showSuccess('Notification sent successfully');
+                    event.target.reset();
+                } else {
+                    throw new Error('Failed to send notification');
+                }
+            } catch (error) {
+                showError('Failed to send notification');
+            }
+        }
+
+        async function updateTransportFee(studentId, paid) {
+            try {
+                const response = await fetch(`/api/admin/students/${studentId}/transport-fee`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ paid })
+                });
+                
+                if (response.ok) {
+                    showSuccess('Transport fee status updated successfully');
+                    loadStudents();
+                } else {
+                    throw new Error('Failed to update transport fee status');
+                }
+            } catch (error) {
+                showError('Failed to update transport fee status');
+            }
+        }
+    </script>
+</body>
+</html> 
