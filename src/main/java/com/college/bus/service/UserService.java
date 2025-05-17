@@ -1,5 +1,6 @@
 package com.college.bus.service;
 
+import com.college.bus.dto.RegisterRequest;
 import com.college.bus.model.User;
 import com.college.bus.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,22 +15,40 @@ import java.util.Optional;
 @Transactional
 public class UserService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
-    public User createUser(User user) {
-        if (userRepository.existsByUsername(user.getUsername())) {
+    public User createUser(RegisterRequest registerRequest) {
+        if (existsByUsername(registerRequest.getUsername())) {
             throw new RuntimeException("Username is already taken");
         }
-        if (userRepository.existsByEmail(user.getEmail())) {
+        if (existsByEmail(registerRequest.getEmail())) {
             throw new RuntimeException("Email is already registered");
         }
 
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        User user = new User();
+        user.setUsername(registerRequest.getUsername());
+        user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+        user.setFullName(registerRequest.getFullName());
+        user.setEmail(registerRequest.getEmail());
+        user.setRole(registerRequest.getRole());
+        user.setTransportFeePaid(false);
+
         return userRepository.save(user);
+    }
+
+    public boolean existsByUsername(String username) {
+        return userRepository.existsByUsername(username);
+    }
+
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
     }
 
     public Optional<User> getUserById(Long id) {
@@ -45,6 +64,9 @@ public class UserService {
     }
 
     public User updateUser(User user) {
+        if (!userRepository.existsById(user.getId())) {
+            throw new RuntimeException("User not found");
+        }
         return userRepository.save(user);
     }
 
