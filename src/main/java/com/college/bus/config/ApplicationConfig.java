@@ -13,16 +13,22 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.boot.web.servlet.ServletContextInitializer;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.context.annotation.Primary;
 
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import javax.sql.DataSource;
+import java.util.Properties;
 
 @Configuration
 @EnableConfigurationProperties
 @EntityScan(basePackages = "com.college.bus.model")
-@EnableJpaRepositories(basePackages = "com.college.bus.repository")
+@EnableJpaRepositories(
+    basePackages = "com.college.bus.repository",
+    entityManagerFactoryRef = "entityManagerFactory",
+    transactionManagerRef = "transactionManager"
+)
 @EnableTransactionManagement
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ApplicationConfig {
@@ -40,7 +46,8 @@ public class ApplicationConfig {
         };
     }
 
-    @Bean
+    @Primary
+    @Bean(name = "entityManagerFactory")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource);
@@ -51,10 +58,17 @@ public class ApplicationConfig {
         vendorAdapter.setShowSql(false);
         em.setJpaVendorAdapter(vendorAdapter);
 
+        Properties jpaProperties = new Properties();
+        jpaProperties.put("hibernate.hbm2ddl.auto", "update");
+        jpaProperties.put("hibernate.jdbc.lob.non_contextual_creation", "true");
+        jpaProperties.put("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
+        em.setJpaProperties(jpaProperties);
+
         return em;
     }
 
-    @Bean
+    @Primary
+    @Bean(name = "transactionManager")
     public PlatformTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
         JpaTransactionManager transactionManager = new JpaTransactionManager();
         transactionManager.setEntityManagerFactory(entityManagerFactory);
