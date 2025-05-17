@@ -12,6 +12,8 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.core.env.Environment;
+import org.springframework.orm.jpa.SharedEntityManagerCreator;
+import jakarta.persistence.EntityManager;
 
 import javax.sql.DataSource;
 import java.util.Properties;
@@ -41,14 +43,13 @@ public class JpaConfig {
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
         vendorAdapter.setShowSql("true".equals(env.getProperty("spring.jpa.show-sql")));
         vendorAdapter.setGenerateDdl(true);
+        vendorAdapter.setDatabasePlatform("org.hibernate.dialect.PostgreSQLDialect");
         em.setJpaVendorAdapter(vendorAdapter);
         
         Properties properties = new Properties();
-        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
         properties.setProperty("hibernate.format_sql", "true");
         properties.setProperty("hibernate.jdbc.lob.non_contextual_creation", "true");
         
-        // Add conditional properties based on environment
         if (env.matchesProfiles("prod")) {
             properties.setProperty("hibernate.connection.provider_disables_autocommit", "true");
             properties.setProperty("hibernate.generate_statistics", "false");
@@ -59,6 +60,12 @@ public class JpaConfig {
         
         em.setJpaProperties(properties);
         return em;
+    }
+
+    @Primary
+    @Bean(name = "entityManager")
+    public EntityManager entityManager(EntityManagerFactory entityManagerFactory) {
+        return SharedEntityManagerCreator.createSharedEntityManager(entityManagerFactory);
     }
 
     @Primary
