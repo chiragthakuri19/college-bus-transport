@@ -11,4 +11,15 @@ services:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: DATABASE_URL
-        value: postgres://college_bus_transport_user:vyF15b97LDlzkLh1KeML8oA6DEYS788Y@dpg-d0k229juibrs7394prfg-a/college_bus_transport 
+        fromDatabase:
+          name: college-bus-transport-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JAVA_TOOL_OPTIONS
+        value: "-XX:MaxRAMPercentage=75.0"
+
+  - type: postgresql
+    name: college-bus-transport-db
+    plan: free
+    ipAllowList: [] 
