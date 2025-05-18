@@ -45,12 +45,23 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/public/**").permitAll()
-                .requestMatchers("/error").permitAll()
+                .requestMatchers(
+                    "/", 
+                    "/error", 
+                    "/api/auth/**", 
+                    "/api/public/**",
+                    "/login.html",
+                    "/register.html",
+                    "/dashboard.html",
+                    "/student/**",
+                    "/admin/**",
+                    "/css/**",
+                    "/js/**",
+                    "/static/**"
+                ).permitAll()
                 .anyRequest().authenticated())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-} 
+}

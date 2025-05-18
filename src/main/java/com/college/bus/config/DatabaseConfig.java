@@ -11,6 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.StringUtils;
 import org.springframework.core.env.Environment;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import javax.sql.DataSource;
 import java.net.URI;
@@ -25,6 +26,7 @@ public class DatabaseConfig {
     @Value("${DATABASE_URL:#{null}}")
     private String databaseUrl;
 
+    @Primary
     @Bean
     @ConfigurationProperties(prefix = "spring.datasource")
     public DataSourceProperties dataSourceProperties() {
@@ -33,12 +35,12 @@ public class DatabaseConfig {
 
     @Primary
     @Bean
-    public DataSource dataSource(DataSourceProperties properties) {
+    public DataSource dataSource(@Qualifier("dataSourceProperties") DataSourceProperties dataSourceProperties) {
         HikariConfig config = new HikariConfig();
-        
+
         // Check if we're in production environment
         boolean isProduction = environment.matchesProfiles("prod");
-        
+
         if (isProduction && StringUtils.hasText(databaseUrl)) {
             try {
                 // Parse Render's DATABASE_URL
@@ -46,7 +48,7 @@ public class DatabaseConfig {
                 String username = dbUri.getUserInfo().split(":")[0];
                 String password = dbUri.getUserInfo().split(":")[1];
                 String dbUrl = "jdbc:postgresql://" + dbUri.getHost() + ':' + dbUri.getPort() + dbUri.getPath() + "?sslmode=require";
-                
+
                 config.setJdbcUrl(dbUrl);
                 config.setUsername(username);
                 config.setPassword(password);
@@ -55,13 +57,13 @@ public class DatabaseConfig {
             }
         } else {
             // Use properties from application.properties for development
-            config.setJdbcUrl(properties.getUrl());
-            config.setUsername(properties.getUsername());
-            config.setPassword(properties.getPassword());
+            config.setJdbcUrl(dataSourceProperties.getUrl());
+            config.setUsername(dataSourceProperties.getUsername());
+            config.setPassword(dataSourceProperties.getPassword());
         }
 
         config.setDriverClassName("org.postgresql.Driver");
-        
+
         // Connection pool settings
         if (isProduction) {
             // Production pool settings
@@ -72,17 +74,17 @@ public class DatabaseConfig {
             config.setMinimumIdle(1);
             config.setMaximumPoolSize(5);
         }
-        
+
         config.setIdleTimeout(300000);
         config.setConnectionTimeout(20000);
         config.setMaxLifetime(1200000);
-        
+
         // PostgreSQL specific settings
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
         config.addDataSourceProperty("useServerPrepStmts", "true");
-        
+
         return new HikariDataSource(config);
     }
-} 
+}

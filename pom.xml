@@ -47,8 +47,10 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
+            <version>42.6.0</version> <!-- specify the latest stable version -->
             <scope>runtime</scope>
         </dependency>
+
         
         <!-- Lombok -->
         <dependency>
@@ -95,6 +97,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <mainClass>com.college.transport.Main</mainClass>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
@@ -109,6 +112,9 @@
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
@@ -120,4 +126,4 @@
             </plugin>
         </plugins>
     </build>
-</project> 
+</project>
